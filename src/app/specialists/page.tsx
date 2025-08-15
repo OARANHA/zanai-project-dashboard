@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import ElegantCard from '@/components/ui/ElegantCard';
+import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 
 interface Agent {
@@ -40,6 +41,22 @@ interface Agent {
     name: string;
     description: string;
   };
+}
+
+interface Composition {
+  id: string;
+  name: string;
+  description: string;
+  config: string;
+  status: 'draft' | 'active' | 'inactive';
+  workspaceId: string;
+  createdAt: string;
+  updatedAt: string;
+  workspace?: {
+    name: string;
+    description: string;
+  };
+  agents?: Agent[];
 }
 
 interface Workspace {
@@ -75,8 +92,10 @@ interface NewSpecialist {
 
 export default function SpecialistsPage() {
   const pathname = usePathname();
+  const { toast } = useToast();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [compositions, setCompositions] = useState<Composition[]>([]);
   const [selectedWorkspace, setSelectedWorkspace] = useState<string>('');
   
   // Test data - hardcoded para teste
@@ -116,6 +135,7 @@ export default function SpecialistsPage() {
     loadWorkspaces();
     loadAgents();
     loadSpecialists();
+    loadCompositions();
   }, []);
 
   const loadWorkspaces = async () => {
@@ -163,6 +183,69 @@ export default function SpecialistsPage() {
       }
     } catch (error) {
       console.error('Erro ao carregar especialistas:', error);
+    }
+  };
+
+  const loadCompositions = async () => {
+    try {
+      const response = await fetch('/api/compositions');
+      if (response.ok) {
+        const data = await response.json();
+        setCompositions(data);
+        console.log('Composições carregadas:', data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar composições:', error);
+    }
+  };
+
+  const generateFolderStructure = async () => {
+    try {
+      const response = await fetch('/api/generate-folder-structure', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "Estrutura Gerada",
+          description: "A estrutura de pastas foi gerada com sucesso.",
+        });
+      } else {
+        throw new Error('Falha ao gerar estrutura');
+      }
+    } catch (error) {
+      console.error('Erro ao gerar estrutura:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível gerar a estrutura de pastas.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const parseAgentsFromConfig = (config: string): string[] => {
+    try {
+      const lines = config.split('\n');
+      const agents: string[] = [];
+      
+      for (const line of lines) {
+        if (line.includes('agent:')) {
+          const agentMatch = line.match(/agent:\s*"([^"]+)"/);
+          if (agentMatch) {
+            agents.push(agentMatch[1]);
+          }
+        }
+      }
+      
+      return agents;
+    } catch (error) {
+      console.error('Erro ao parsear configuração:', error);
+      return [];
     }
   };
 
@@ -245,25 +328,165 @@ export default function SpecialistsPage() {
     }
   };
 
-  const generateFolderStructure = async () => {
+  const executeStaticComposition = async (compositionId: string) => {
     try {
-      const response = await fetch('/api/specialists/structure', {
+      toast({
+        title: "Executando Composição",
+        description: "Análise completa de projetos em andamento...",
+      });
+
+      // Agentes reais para análise de projetos
+      const analysisAgents = [
+        {
+          id: "cmed1m191000fs4kjxpx0a0hy", // Arquiteto de Software Sênior
+          name: "Arquiteto de Software",
+          role: "análise de arquitetura e design patterns"
+        },
+        {
+          id: "cmed1m18o0003s4kje0n78m2f", // Cientista de Dados Senior
+          name: "Cientista de Dados",
+          role: "análise de dados e métricas"
+        },
+        {
+          id: "cmed1m195000js4kjqyvhx9s1", // Engenheiro de DevOps
+          name: "Engenheiro de DevOps",
+          role: "análise de infraestrutura e CI/CD"
+        }
+      ];
+
+      const results = [];
+      
+      // Executar cada agente sequencialmente
+      for (const agent of analysisAgents) {
+        try {
+          const response = await fetch('/api/execute', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              agentId: agent.id,
+              input: `Analise o projeto atual como ${agent.role}. Identifique pontos fortes, fracos e sugestões de melhoria.`,
+              context: {
+                compositionId,
+                agentCount: analysisAgents.length,
+                timestamp: new Date().toISOString()
+              }
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            results.push({
+              agent: agent.name,
+              result: result.output || 'Análise concluída com sucesso',
+              success: true
+            });
+          } else {
+            results.push({
+              agent: agent.name,
+              result: 'Erro na execução da análise',
+              success: false
+            });
+          }
+        } catch (error) {
+          results.push({
+            agent: agent.name,
+            result: `Erro: ${error.message}`,
+            success: false
+          });
+        }
+      }
+
+      // Mostrar resultados detalhados
+      setTimeout(() => {
+        const successCount = results.filter(r => r.success).length;
+        toast({
+          title: "Análise Concluída",
+          description: `${successCount}/${results.length} análises concluídas com sucesso.`,
+        });
+
+        // Mostrar resultados individuais no console
+        console.log('Resultados da análise:', results);
+        
+        // Aqui poderíamos mostrar os resultados em um modal ou expandir o card
+      }, 2000);
+
+    } catch (error) {
+      console.error('Erro ao executar composição estática:', error);
+      toast({
+        title: "Erro na Execução",
+        description: "Não foi possível executar a composição. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const showCompositionSettings = (compositionId: string) => {
+    const settings = {
+      name: "Análise Completa de Projetos",
+      description: "Combinação de agentes para análise completa de projetos",
+      agents: [
+        {
+          id: "cmed1m191000fs4kjxpx0a0hy",
+          name: "Arquiteto de Software Sênior",
+          role: "Análise de arquitetura e design patterns",
+          expertise: ["Microservices", "Design Patterns", "Clean Architecture"]
+        },
+        {
+          id: "cmed1m18o0003s4kje0n78m2f",
+          name: "Cientista de Dados Senior",
+          role: "Análise de dados e métricas",
+          expertise: ["Machine Learning", "Data Analytics", "Big Data"]
+        },
+        {
+          id: "cmed1m195000js4kjqyvhx9s1",
+          name: "Engenheiro de DevOps",
+          role: "Análise de infraestrutura e CI/CD",
+          expertise: ["CI/CD", "Infrastructure as Code", "Monitoring"]
+        }
+      ],
+      executionMode: "sequential",
+      timeout: 30000,
+      retryCount: 3
+    };
+
+    console.log("Configurações da composição:", settings);
+    toast({
+      title: "Configurações da Composição",
+      description: `${settings.agents.length} agentes configurados em modo ${settings.executionMode}.`,
+    });
+  };
+
+  const executeComposition = async (compositionId: string) => {
+    try {
+      const response = await fetch('/api/compositions/execute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ basePath: '.zanai/specialists' }),
+        body: JSON.stringify({
+          compositionId,
+          input: 'Executar composição'
+        }),
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        alert(`Estrutura criada com sucesso!\n\n${result.totalFiles} arquivos gerados em:\n${result.basePath}`);
-      } else {
-        alert('Erro ao criar estrutura de pastas');
-      }
+      const result = await response.json();
+      console.log('Resultado da composição:', result);
+      
+      // Mostrar notificação de sucesso
+      toast({
+        title: "Composição Executada",
+        description: `A composição foi executada com ${result.results?.length || 0} agentes.`,
+      });
+      
     } catch (error) {
-      console.error('Erro ao gerar estrutura:', error);
-      alert('Erro ao gerar estrutura de pastas');
+      console.error('Erro ao executar composição:', error);
+      toast({
+        title: "Erro na Execução",
+        description: "Não foi possível executar a composição. Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -744,19 +967,23 @@ export default function SpecialistsPage() {
               >
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-1">
-                    <Badge variant="secondary" className="text-xs">Analisador de Código</Badge>
-                    <Badge variant="secondary" className="text-xs">Gerador de API</Badge>
-                    <Badge variant="secondary" className="text-xs">Assistente de Documentação</Badge>
+                    <Badge variant="secondary" className="text-xs">Arquitetura de Software</Badge>
+                    <Badge variant="secondary" className="text-xs">Ciência de Dados</Badge>
+                    <Badge variant="secondary" className="text-xs">DevOps</Badge>
                   </div>
                   <div className="text-sm text-muted-foreground">
                     <span className="font-medium">Eficiência:</span> 94% • <span className="font-medium">Último uso:</span> 2 horas atrás
                   </div>
                   <div className="flex space-x-2">
-                    <Button size="sm" className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700">
+                    <Button 
+                      size="sm" 
+                      className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
+                      onClick={() => executeStaticComposition('analise-completa-projetos')}
+                    >
                       <Play className="w-4 h-4 mr-1" />
                       Executar
                     </Button>
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" onClick={() => showCompositionSettings('analise-completa-projetos')}>
                       <Settings className="w-4 h-4" />
                     </Button>
                   </div>

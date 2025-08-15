@@ -39,7 +39,7 @@ Responda sempre em português com foco em segurança e melhor práticas.
 - Múltiplos provedores
 
 ## Criado em
-2025-08-14T17:01:41.360Z
+2025-08-15T16:35:10.776Z
 
 ---
 

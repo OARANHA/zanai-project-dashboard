@@ -34,6 +34,7 @@ interface Execution {
   completedAt?: string;
   error?: string;
   result?: string;
+  createdAt?: string;
 }
 
 export default function AgentExecutionDialog({ agent, children, initialInput }: AgentExecutionDialogProps) {
@@ -102,26 +103,47 @@ export default function AgentExecutionDialog({ agent, children, initialInput }: 
   };
 
   const pollExecutionStatus = async (executionId: string) => {
+    let pollCount = 0;
+    const maxPolls = 60; // 60 segundos de polling (1 * 60)
     const pollInterval = setInterval(async () => {
       try {
+        pollCount++;
+        console.log(`Polling execution ${executionId} - attempt ${pollCount}/${maxPolls}`);
+        
         const response = await fetch(`/api/execute?executionId=${executionId}`);
         if (response.ok) {
           const execution: Execution = await response.json();
+          console.log(`Execution ${executionId} status: ${execution.status}`);
           setCurrentExecution(execution);
           
           if (execution.status === 'completed' || execution.status === 'failed') {
+            console.log(`Execution ${executionId} finished with status: ${execution.status}`);
             clearInterval(pollInterval);
             loadExecutionHistory(); // Recarregar histórico
           }
+        } else {
+          console.error(`Failed to fetch execution ${executionId} status:`, response.status);
         }
       } catch (error) {
         console.error('Erro ao verificar status da execução:', error);
         clearInterval(pollInterval);
       }
+      
+      // Parar polling após maxPolls tentativas
+      if (pollCount >= maxPolls) {
+        console.log(`Polling stopped after ${maxPolls} attempts for execution ${executionId}`);
+        clearInterval(pollInterval);
+        
+        // Marcar como timeout se ainda estiver running
+        if (currentExecution?.status === 'running') {
+          setCurrentExecution(prev => prev ? {
+            ...prev,
+            status: 'failed',
+            error: 'Timeout: A execução demorou mais do que o esperado'
+          } : null);
+        }
+      }
     }, 1000);
-
-    // Limpar polling após 30 segundos
-    setTimeout(() => clearInterval(pollInterval), 30000);
   };
 
   const getStatusIcon = (status: string) => {
@@ -269,9 +291,17 @@ export default function AgentExecutionDialog({ agent, children, initialInput }: 
                 {currentExecution.status === 'running' && (
                   <Card>
                     <CardContent className="pt-6">
-                      <div className="flex items-center justify-center space-x-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Processando sua solicitação...</span>
+                      <div className="flex flex-col items-center justify-center space-y-4">
+                        <div className="flex items-center space-x-2">
+                          <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                          <span className="text-lg font-medium">Processando sua solicitação...</span>
+                        </div>
+                        <div className="text-sm text-muted-foreground text-center max-w-md">
+                          O agente está analisando sua solicitação e gerando uma resposta. Isso pode levar alguns segundos.
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Aguardando resposta da IA...
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

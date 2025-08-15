@@ -126,7 +126,9 @@ export async function GET(request: NextRequest) {
 
 async function processAgentExecutionWithZAI(agentId: string, executionId: string, input: string, context?: any) {
   try {
-    console.log(`Iniciando execução do agente ${agentId} com API Z.ai`);
+    console.log(`Iniciando execução do agente ${agentId} com API Z.ai - Execution ID: ${executionId}`);
+    console.log(`Input: ${input}`);
+    console.log(`Context:`, context);
     
     // Usar o serviço de execução de agentes real
     const executionService = AgentExecutionService.getInstance();
@@ -153,8 +155,10 @@ async function processAgentExecutionWithZAI(agentId: string, executionId: string
           completedAt: new Date()
         }
       });
+      console.log(`Execução ${executionId} concluída com sucesso`);
     } else {
       // Atualizar o registro de execução com erro
+      console.error(`Execução ${executionId} falhou:`, result.error);
       await db.agentExecution.update({
         where: { id: executionId },
         data: {

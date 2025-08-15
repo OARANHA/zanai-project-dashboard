@@ -34,11 +34,17 @@ export class AgentExecutionService {
         console.log('Inicializando ZAI com configuração...');
         const config = getZAIConfig();
         console.log('Configuração ZAI:', JSON.stringify(config, null, 2));
+        
+        // Verificar se a chave de API está configurada
+        if (!config.apiKey) {
+          throw new Error('ZAI_API_KEY não está configurada');
+        }
+        
         this.zai = await ZAI.create(config);
         console.log('ZAI inicializado com sucesso');
       } catch (error) {
         console.error('Erro ao inicializar ZAI:', error);
-        throw new Error('Falha ao inicializar serviço de IA');
+        throw new Error(`Falha ao inicializar serviço de IA: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
       }
     }
     return this.zai;
@@ -48,6 +54,9 @@ export class AgentExecutionService {
     const startTime = Date.now();
     
     try {
+      console.log(`Iniciando execução do agente ${request.agentId}`);
+      console.log(`Input: ${request.input}`);
+      
       // Buscar configuração do agente
       const agent = await db.agent.findUnique({
         where: { id: request.agentId },
@@ -55,16 +64,20 @@ export class AgentExecutionService {
       });
 
       if (!agent) {
-        throw new Error('Agente não encontrado');
+        throw new Error(`Agente não encontrado: ${request.agentId}`);
       }
+
+      console.log(`Agente encontrado: ${agent.name} (${agent.type})`);
 
       // Inicializar ZAI
       const zai = await this.initializeZAI();
 
       // Preparar prompt com base na configuração do agente
       const systemPrompt = this.buildSystemPrompt(agent);
+      console.log(`System prompt gerado para ${agent.name}:`, systemPrompt);
       
       // Executar o agente
+      console.log('Enviando requisição para API Z.ai...');
       const completion = await zai.chat.completions.create({
         messages: [
           {
@@ -81,7 +94,7 @@ export class AgentExecutionService {
         max_tokens: 2000
       });
 
-      console.log('Resposta da API Z.ai:', JSON.stringify(completion, null, 2));
+      console.log('Resposta da API Z.ai recebida:', JSON.stringify(completion, null, 2));
 
       // Verificar se a resposta tem a estrutura esperada - ser mais tolerante
       let output = '';
@@ -99,7 +112,10 @@ export class AgentExecutionService {
         output = JSON.stringify(completion);
       }
 
+      console.log(`Output extraído: ${output}`);
+
       const executionTime = Date.now() - startTime;
+      console.log(`Execução concluída em ${executionTime}ms`);
 
       // Registrar aprendizado
       await this.recordLearning(agent.id, 'execution', {

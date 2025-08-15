@@ -16,8 +16,19 @@ export function getZAIConfig(): ZAIConfig {
   const apiKey = process.env.ZAI_API_KEY;
   const baseUrl = process.env.ZAI_BASE_URL;
   
+  console.log('Verificando configuração ZAI:');
+  console.log('ZAI_API_KEY exists:', !!apiKey);
+  console.log('ZAI_API_KEY length:', apiKey?.length || 0);
+  console.log('ZAI_BASE_URL:', baseUrl);
+  
   if (!apiKey) {
+    console.error('ZAI_API_KEY environment variable is not set');
     throw new Error('ZAI_API_KEY environment variable is required');
+  }
+
+  if (apiKey.length < 10) {
+    console.error('ZAI_API_KEY seems too short:', apiKey);
+    throw new Error('ZAI_API_KEY appears to be invalid');
   }
 
   return {

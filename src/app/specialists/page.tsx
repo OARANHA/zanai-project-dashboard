@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import ElegantCard from '@/components/ui/ElegantCard';
+import { Toaster } from '@/components/ui/toaster';
 
 interface Agent {
   id: string;
@@ -286,13 +287,15 @@ export default function SpecialistsPage() {
       if (response.ok) {
         const result = await response.json();
         console.log('Agente executado com sucesso:', result);
-        // Aqui você pode adicionar uma notificação de sucesso
+        return result;
       } else {
         const error = await response.json();
         console.error('Erro ao executar agente:', error);
+        throw new Error(error.error || 'Erro ao executar agente');
       }
     } catch (error) {
       console.error('Erro ao executar agente:', error);
+      throw error;
     }
   };
 
@@ -1071,6 +1074,7 @@ export default function SpecialistsPage() {
           </TabsContent>
         </Tabs>
       </div>
+      <Toaster />
     </MainLayout>
   );
 }

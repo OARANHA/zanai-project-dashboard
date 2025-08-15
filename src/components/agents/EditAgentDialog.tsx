@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -35,12 +35,12 @@ interface Workspace {
 
 interface EditAgentDialogProps {
   agent: Agent;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onAgentUpdated: () => void;
-  children: React.ReactNode;
 }
 
-export default function EditAgentDialog({ agent, onAgentUpdated, children }: EditAgentDialogProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function EditAgentDialog({ agent, open, onOpenChange, onAgentUpdated }: EditAgentDialogProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [formData, setFormData] = useState({
@@ -53,6 +53,14 @@ export default function EditAgentDialog({ agent, onAgentUpdated, children }: Edi
     workspaceId: ''
   });
   const [activeTab, setActiveTab] = useState('basic');
+
+  useEffect(() => {
+    if (open) {
+      loadWorkspaces();
+      loadAgentData();
+      setActiveTab('basic');
+    }
+  }, [open, agent.id]);
 
   const loadWorkspaces = async () => {
     try {
@@ -72,13 +80,13 @@ export default function EditAgentDialog({ agent, onAgentUpdated, children }: Edi
       if (response.ok) {
         const agentData = await response.json();
         setFormData({
-          name: agentData.name,
-          description: agentData.description,
-          type: agentData.type,
-          config: agentData.config,
+          name: agentData.name || '',
+          description: agentData.description || '',
+          type: agentData.type || 'template',
+          config: agentData.config || '',
           knowledge: agentData.knowledge || '',
-          status: agentData.status,
-          workspaceId: agentData.workspaceId
+          status: agentData.status || 'active',
+          workspaceId: agentData.workspaceId || ''
         });
       }
     } catch (error) {
@@ -103,7 +111,7 @@ export default function EditAgentDialog({ agent, onAgentUpdated, children }: Edi
 
       if (response.ok) {
         onAgentUpdated();
-        setIsOpen(false);
+        onOpenChange(false);
       } else {
         const error = await response.json();
         alert(`Erro ao atualizar agente: ${error.error}`);
@@ -117,12 +125,7 @@ export default function EditAgentDialog({ agent, onAgentUpdated, children }: Edi
   };
 
   const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (open) {
-      loadWorkspaces();
-      loadAgentData();
-      setActiveTab('basic');
-    }
+    onOpenChange(open);
   };
 
   const validateYAML = (yaml: string): boolean => {
@@ -172,10 +175,7 @@ export default function EditAgentDialog({ agent, onAgentUpdated, children }: Edi
     formData.workspaceId !== agent.workspaceId;
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh]">
         <DialogHeader>
           <div className="flex items-center justify-between">

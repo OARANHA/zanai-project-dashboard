@@ -24,15 +24,19 @@ import ElegantCard from '@/components/ui/ElegantCard';
 interface Agent {
   id: string;
   name: string;
+  slug: string;
   description: string;
   type: 'template' | 'custom' | 'composed';
   status: 'active' | 'inactive' | 'training';
   config: string;
   knowledge?: string;
-  createdAt: string;
+  roleDefinition: string;
+  groups: any[];
+  customInstructions: string;
+  workspaceId: string;
   workspace?: {
-    id: string;
     name: string;
+    description: string;
   };
 }
 
@@ -58,7 +62,7 @@ interface SpecialistTemplate {
   prompt: string;
   skills: string[];
   useCases: string[];
-  created: string;
+  created: string; // ISO string format
 }
 
 interface NewSpecialist {
@@ -588,9 +592,6 @@ export default function SpecialistsPage() {
                   <div className="space-y-3">
                     <div className="text-sm text-muted-foreground">
                       <span className="font-medium">Workspace:</span> {agent.workspace?.name || 'N/A'}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      <span className="font-medium">Criado em:</span> {new Date(agent.createdAt).toLocaleDateString()}
                     </div>
                     <div className="flex space-x-2">
                       <AgentExecutionDialog agent={agent}>

@@ -19,6 +19,9 @@ export async function GET() {
       slug: agent.slug,
       description: agent.description,
       type: agent.type,
+      status: agent.status,
+      config: agent.config,
+      knowledge: agent.knowledge,
       roleDefinition: agent.description || `Você é um agente especialista chamado ${agent.name}`,
       groups: [
         "read",

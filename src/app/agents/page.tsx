@@ -31,8 +31,11 @@ import {
   Rocket
 } from 'lucide-react';
 import EditAgentDialog from '@/components/agents/EditAgentDialog';
+import AgentDetailsDialog from '@/components/agents/AgentDetailsDialog';
+import AgentActionsMenu from '@/components/agents/AgentActionsMenu';
 import MainLayout from '@/components/layout/MainLayout';
 import ElegantCard from '@/components/ui/ElegantCard';
+import { useToast } from '@/hooks/use-toast';
 
 interface Agent {
   id: string;
@@ -59,10 +62,14 @@ interface Workspace {
 
 export default function AgentsPage() {
   const pathname = usePathname();
+  const { toast } = useToast();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [selectedWorkspace, setSelectedWorkspace] = useState<string>('');
   const [isCreateAgentOpen, setIsCreateAgentOpen] = useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [newAgent, setNewAgent] = useState({
@@ -171,6 +178,220 @@ export default function AgentsPage() {
     } catch (error) {
       console.error('Erro ao arquivar/desarquivar agente:', error);
     }
+  };
+
+  const executeAgent = async (agent: Agent) => {
+    try {
+      const response = await fetch('/api/execute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agentId: agent.id,
+          input: 'Executar agente',
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "Agente executado com sucesso!",
+          description: `O agente "${agent.name}" foi executado e retornou um resultado.`,
+          variant: "default",
+        });
+        console.log('Agente executado com sucesso:', result);
+      } else {
+        toast({
+          title: "Erro ao executar agente",
+          description: `Não foi possível executar o agente "${agent.name}".`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro ao executar agente",
+        description: `Ocorreu um erro ao tentar executar o agente "${agent.name}".`,
+        variant: "destructive",
+      });
+      console.error('Erro ao executar agente:', error);
+    }
+  };
+
+  const duplicateAgent = async (agent: Agent) => {
+    try {
+      // Gerar um novo slug baseado no nome
+      const newSlug = agent.slug + '-copy-' + Date.now();
+      
+      const response = await fetch('/api/agents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: agent.name,
+          description: agent.description,
+          type: agent.type,
+          config: agent.config,
+          knowledge: agent.knowledge,
+          workspaceId: agent.workspaceId,
+          slug: newSlug,
+        }),
+      });
+
+      if (response.ok) {
+        await loadAgents();
+        toast({
+          title: "Agente duplicado com sucesso!",
+          description: `O agente "${agent.name}" foi duplicado com sucesso.`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Erro ao duplicar agente",
+          description: `Não foi possível duplicar o agente "${agent.name}".`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro ao duplicar agente",
+        description: `Ocorreu um erro ao tentar duplicar o agente "${agent.name}".`,
+        variant: "destructive",
+      });
+      console.error('Erro ao duplicar agente:', error);
+    }
+  };
+
+  const exportAgent = async (agent: Agent) => {
+    try {
+      const exportData = {
+        name: agent.name,
+        description: agent.description,
+        type: agent.type,
+        config: agent.config,
+        knowledge: agent.knowledge,
+        customInstructions: agent.customInstructions,
+        roleDefinition: agent.roleDefinition,
+        groups: agent.groups,
+        exportedAt: new Date().toISOString(),
+        version: '1.0'
+      };
+
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${agent.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_export.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Agente exportado com sucesso!",
+        description: `O agente "${agent.name}" foi exportado como arquivo JSON.`,
+        variant: "default",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao exportar agente",
+        description: `Ocorreu um erro ao tentar exportar o agente "${agent.name}".`,
+        variant: "destructive",
+      });
+      console.error('Erro ao exportar agente:', error);
+    }
+  };
+
+  const shareAgent = async (agent: Agent) => {
+    try {
+      // Simular compartilhamento - gerar URL
+      const shareUrl = `${window.location.origin}/shared/agent/${agent.id}`;
+      
+      // Copiar para clipboard
+      await navigator.clipboard.writeText(shareUrl);
+      
+      toast({
+        title: "Link copiado!",
+        description: `O link de compartilhamento do agente "${agent.name}" foi copiado para a área de transferência.`,
+        variant: "default",
+      });
+      
+      console.log('Link de compartilhamento copiado:', shareUrl);
+    } catch (error) {
+      toast({
+        title: "Erro ao compartilhar agente",
+        description: `Ocorreu um erro ao tentar compartilhar o agente "${agent.name}".`,
+        variant: "destructive",
+      });
+      console.error('Erro ao compartilhar agente:', error);
+    }
+  };
+
+  const deleteAgent = async (agent: Agent) => {
+    try {
+      const response = await fetch('/api/agents/' + agent.id, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        await loadAgents();
+        toast({
+          title: "Agente excluído com sucesso!",
+          description: `O agente "${agent.name}" foi excluído permanentemente.`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Erro ao excluir agente",
+          description: `Não foi possível excluir o agente "${agent.name}".`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro ao excluir agente",
+        description: `Ocorreu um erro ao tentar excluir o agente "${agent.name}".`,
+        variant: "destructive",
+      });
+      console.error('Erro ao excluir agente:', error);
+    }
+  };
+
+  // Event handlers para os diálogos e ações
+  const handleViewDetails = (agent: Agent) => {
+    setSelectedAgent(agent);
+    setIsDetailsDialogOpen(true);
+  };
+
+  const handleEditAgent = (agent: Agent) => {
+    setSelectedAgent(agent);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleExecute = (agent: Agent) => {
+    executeAgent(agent);
+  };
+
+  const handleDuplicate = (agent: Agent) => {
+    duplicateAgent(agent);
+  };
+
+  const handleExport = (agent: Agent) => {
+    exportAgent(agent);
+  };
+
+  const handleShare = (agent: Agent) => {
+    shareAgent(agent);
+  };
+
+  const handleArchive = (agent: Agent) => {
+    toggleArchiveAgent(agent);
+  };
+
+  const handleDelete = (agent: Agent) => {
+    deleteAgent(agent);
   };
 
   const getStatusColor = (status: string) => {
@@ -437,43 +658,37 @@ export default function AgentsPage() {
                 {filteredAgents.map((agent) => {
                   const TypeIcon = getTypeIcon(agent.type);
                   return (
-                    <Card key={agent.id} className="group relative overflow-hidden bg-white dark:bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-300 border-0 hover:scale-105 hover:-translate-y-1">
-                      {/* Background gradient overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-transparent opacity-0 group-hover:opacity-5 transition-opacity duration-300"></div>
-                      
-                      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4 relative z-10">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <div className={`p-2 ${getTypeColor(agent.type)} rounded-lg`}>
-                              <TypeIcon className="w-4 h-4" />
-                            </div>
-                            <Badge variant="outline" className={getTypeColor(agent.type)}>
-                              {agent.type}
-                            </Badge>
-                          </div>
-                          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mb-1">
-                            {agent.name}
-                          </CardTitle>
-                          <CardDescription className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-                            {agent.description}
-                          </CardDescription>
-                        </div>
-                        
-                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      
-                      <CardContent className="pt-0 relative z-10">
-                        <div className="flex items-center justify-between mb-4">
+                    <ElegantCard
+                      key={agent.id}
+                      title={agent.name}
+                      description={agent.description}
+                      icon={TypeIcon}
+                      iconColor={agent.type === 'template' ? 'text-blue-600' : 
+                               agent.type === 'custom' ? 'text-purple-600' : 'text-green-600'}
+                      bgColor={agent.type === 'template' ? 'bg-blue-100 dark:bg-blue-900/20' : 
+                               agent.type === 'custom' ? 'bg-purple-100 dark:bg-purple-900/20' : 'bg-green-100 dark:bg-green-900/20'}
+                      badge={agent.type}
+                      badgeColor={agent.type === 'template' ? 'bg-blue-50 text-blue-700 border-blue-200' : 
+                               agent.type === 'custom' ? 'bg-purple-50 text-purple-700 border-purple-200' : 
+                               'bg-green-50 text-green-700 border-green-200'}
+                      showActions={true}
+                      onViewDetails={() => handleViewDetails(agent)}
+                      onEdit={() => handleEditAgent(agent)}
+                      actionsMenu={
+                        <AgentActionsMenu
+                          agent={agent}
+                          onExecute={handleExecute}
+                          onEdit={handleEditAgent}
+                          onDuplicate={handleDuplicate}
+                          onArchive={handleArchive}
+                          onDelete={handleDelete}
+                          onExport={handleExport}
+                          onShare={handleShare}
+                        />
+                      }
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                             <span className="text-sm text-muted-foreground">Ativo</span>
@@ -488,26 +703,32 @@ export default function AgentsPage() {
                         </div>
                         
                         {agent.workspace && (
-                          <div className="flex items-center space-x-2 text-xs text-muted-foreground mb-4">
+                          <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                             <Users className="w-3 h-3" />
                             <span>{agent.workspace.name}</span>
                           </div>
                         )}
                         
                         <div className="flex items-center space-x-2">
-                          <Button size="sm" className="flex-1 h-9 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+                          <Button 
+                            size="sm" 
+                            className="flex-1 h-9 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                            onClick={() => handleExecute(agent)}
+                          >
                             <Play className="w-4 h-4 mr-1" />
                             Executar
                           </Button>
-                          <Button size="sm" variant="outline" className="h-9">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-9"
+                            onClick={() => handleEditAgent(agent)}
+                          >
                             <Settings className="w-4 h-4" />
                           </Button>
                         </div>
-                      </CardContent>
-                      
-                      {/* Subtle border animation */}
-                      <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover:border-blue-200 dark:group-hover:border-blue-800 transition-all duration-300 pointer-events-none"></div>
-                    </Card>
+                      </div>
+                    </ElegantCard>
                   );
                 })}
               </div>
@@ -556,6 +777,31 @@ export default function AgentsPage() {
           </>
         )}
       </div>
+
+      {/* Dialogs */}
+      {selectedAgent && (
+        <>
+          <AgentDetailsDialog
+            agent={selectedAgent}
+            open={isDetailsDialogOpen}
+            onOpenChange={setIsDetailsDialogOpen}
+            onExecute={handleExecute}
+            onEdit={handleEditAgent}
+          />
+          
+          <EditAgentDialog
+            agent={selectedAgent}
+            open={isEditDialogOpen}
+            onOpenChange={(open) => {
+              setIsEditDialogOpen(open);
+              if (!open) {
+                setSelectedAgent(null);
+              }
+            }}
+            onAgentUpdated={loadAgents}
+          />
+        </>
+      )}
     </MainLayout>
   );
 }

@@ -1,9 +1,12 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { LucideIcon } from 'lucide-react';
+import { Eye, Edit, MoreVertical } from 'lucide-react';
 
 interface ElegantCardProps {
   title: string;
@@ -18,6 +21,11 @@ interface ElegantCardProps {
   href?: string;
   onClick?: () => void;
   className?: string;
+  // Props para ações interativas
+  showActions?: boolean;
+  onViewDetails?: () => void;
+  onEdit?: () => void;
+  actionsMenu?: ReactNode;
 }
 
 export default function ElegantCard({
@@ -32,7 +40,11 @@ export default function ElegantCard({
   children,
   href,
   onClick,
-  className = ""
+  className = "",
+  showActions = false,
+  onViewDetails,
+  onEdit,
+  actionsMenu
 }: ElegantCardProps) {
   const CardWrapper = href && !onClick ? 'a' : 'div';
   const wrapperProps = href && !onClick 
@@ -40,11 +52,62 @@ export default function ElegantCard({
     : { onClick, className };
 
   const content = (
-    <Card className="group relative overflow-hidden bg-white dark:bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-300 border-0 hover:scale-105 hover:-translate-y-1">
+    <Card className={`group relative overflow-hidden bg-white dark:bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-300 border-0 hover:scale-105 hover:-translate-y-1 ${showActions ? 'pt-2' : ''}`}>
       {/* Background gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-transparent opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
       
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 relative z-10">
+      {/* Action buttons overlay */}
+      {showActions && (
+        <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div className="flex items-center space-x-1 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-1">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewDetails?.();
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Ver detalhes do agente</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-green-100 dark:hover:bg-green-900/50 text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit?.();
+                    }}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Editar agente</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            {actionsMenu}
+          </div>
+        </div>
+      )}
+      
+      <CardHeader className={`flex flex-row items-center justify-between space-y-0 pb-4 relative z-10 ${showActions ? 'pr-16' : ''}`}>
         <div className="flex-1">
           <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
             {title}

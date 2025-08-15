@@ -1,49 +1,96 @@
 'use client';
 
 import { useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { MessageSquare, Settings, Play, FileText, Code, Download, Eye, EyeOff, Loader2 } from 'lucide-react';
-import AgentExecutionDialog from './AgentExecutionDialog';
-import EditAgentDialog from './EditAgentDialog';
-
-interface Agent {
-  id: string;
-  name: string;
-  description: string;
-  type: 'template' | 'custom' | 'composed';
-  status: 'active' | 'inactive' | 'training';
-  config: string;
-  knowledge?: string;
-  createdAt: string;
-  workspace?: {
-    id: string;
-    name: string;
-  };
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  Eye, 
+  Play, 
+  Settings, 
+  Calendar, 
+  BarChart3, 
+  FileText, 
+  Download, 
+  Share2,
+  Copy,
+  CheckCircle,
+  Clock,
+  Zap,
+  Brain,
+  Users,
+  Star,
+  Code
+} from 'lucide-react';
 
 interface AgentDetailsDialogProps {
-  agent: Agent;
-  children: React.ReactNode;
+  agent: any;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onExecute?: (agent: any) => void;
+  onEdit?: (agent: any) => void;
 }
 
-export default function AgentDetailsDialog({ agent, children }: AgentDetailsDialogProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isExecuteOpen, setIsExecuteOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [isExportOpen, setIsExportOpen] = useState(false);
-  const [executionHistory, setExecutionHistory] = useState<any[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [exportFormat, setExportFormat] = useState<'json' | 'yaml' | 'markdown'>('json');
-  const [exportContent, setExportContent] = useState('');
+export default function AgentDetailsDialog({ 
+  agent, 
+  open, 
+  onOpenChange, 
+  onExecute,
+  onEdit 
+}: AgentDetailsDialogProps) {
+  const [copied, setCopied] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+
+  const handleCopyConfig = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(agent, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Erro ao copiar configuração:', error);
+    }
+  };
+
+  const handleExecute = async () => {
+    setIsExecuting(true);
+    try {
+      await onExecute?.(agent);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  const handleExport = () => {
+    const dataStr = JSON.stringify(agent, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${agent.name}-config.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'template': return Star;
+      case 'custom': return Code;
+      case 'composed': return Users;
+      default: return Brain;
+    }
+  };
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'template': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+      case 'custom': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
+      case 'composed': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300';
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -54,353 +101,319 @@ export default function AgentDetailsDialog({ agent, children }: AgentDetailsDial
     }
   };
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'template': return 'bg-blue-100 text-blue-800';
-      case 'custom': return 'bg-purple-100 text-purple-800';
-      case 'composed': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const formatConfig = (config: string) => {
-    if (!config || config.trim() === '') {
-      return 'Nenhuma configuração definida';
-    }
-    return config;
-  };
-
-  // Load execution history
-  const loadExecutionHistory = async () => {
-    setLoadingHistory(true);
-    try {
-      const response = await fetch(`/api/executions?agentId=${agent.id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setExecutionHistory(data);
-      }
-    } catch (error) {
-      console.error('Error loading execution history:', error);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  // Generate export content based on format
-  const generateExportContent = () => {
-    const agentData = {
-      id: agent.id,
-      name: agent.name,
-      description: agent.description,
-      type: agent.type,
-      status: agent.status,
-      config: agent.config,
-      knowledge: agent.knowledge,
-      workspace: agent.workspace,
-      createdAt: agent.createdAt,
-      exportedAt: new Date().toISOString()
-    };
-
-    switch (exportFormat) {
-      case 'json':
-        setExportContent(JSON.stringify(agentData, null, 2));
-        break;
-      case 'yaml':
-        // Simple YAML conversion
-        setExportContent(`name: ${agentData.name}
-description: ${agentData.description}
-type: ${agentData.type}
-status: ${agentData.status}
-config: |
-  ${agentData.config || 'N/A'}
-${agentData.knowledge ? `knowledge: |\n  ${agentData.knowledge}` : ''}
-workspace: ${agentData.workspace?.name || 'N/A'}
-created_at: ${agentData.createdAt}
-exported_at: ${agentData.exportedAt}`);
-        break;
-      case 'markdown':
-        setExportContent(`# ${agent.name}
-
-## Descrição
-${agent.description}
-
-## Tipo
-${agent.type}
-
-## Status
-${agent.status}
-
-## Configuração
-\`\`\`yaml
-${agentData.config || 'N/A'}
-\`\`\`
-
-${agentData.knowledge ? `## Base de Conhecimento
-\`\`\`markdown
-${agentData.knowledge}
-\`\`\`
-` : ''}
-
-## Workspace
-${agentData.workspace?.name || 'N/A'}
-
-## Metadados
-- **Criado em:** ${new Date(agentData.createdAt).toLocaleDateString()}
-- **Exportado em:** ${new Date(agentData.exportedAt).toLocaleDateString()}
-`);
-        break;
-    }
-  };
-
-  // Download exported content
-  const downloadExport = () => {
-    if (!exportContent) return;
-    
-    const blob = new Blob([exportContent], { 
-      type: exportFormat === 'json' ? 'application/json' : 'text/plain' 
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${agent.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${exportFormat}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  // Handle export dialog open
-  const handleExportOpen = () => {
-    generateExportContent();
-    setIsExportOpen(true);
-  };
+  const TypeIcon = getTypeIcon(agent.type);
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-xl">{agent.name}</DialogTitle>
-              <DialogDescription className="mt-2">
-                {agent.description}
-              </DialogDescription>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
+                <TypeIcon className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-semibold">{agent.name}</DialogTitle>
+                <DialogDescription className="flex items-center space-x-2 mt-1">
+                  <Badge className={getTypeColor(agent.type)}>
+                    {agent.type}
+                  </Badge>
+                  <div className="flex items-center space-x-1">
+                    <div className={`w-2 h-2 rounded-full ${getStatusColor(agent.status)}`} />
+                    <span className="text-sm text-muted-foreground capitalize">
+                      {agent.status}
+                    </span>
+                  </div>
+                </DialogDescription>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${getStatusColor(agent.status)}`} />
-              <Badge className={getTypeColor(agent.type)}>
-                {agent.type}
-              </Badge>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExport}
+                className="hidden sm:flex"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Exportar
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleCopyConfig}
+              >
+                {copied ? <CheckCircle className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                {copied ? 'Copiado!' : 'Copiar'}
+              </Button>
             </div>
           </div>
         </DialogHeader>
-        
-        <Tabs defaultValue="overview" className="mt-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="config">Configuração</TabsTrigger>
-            <TabsTrigger value="knowledge">Conhecimento</TabsTrigger>
-            <TabsTrigger value="actions">Ações</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h4 className="font-medium text-sm text-muted-foreground mb-1">Status</h4>
-                <div className="flex items-center space-x-2">
-                  <div className={`w-3 h-3 rounded-full ${getStatusColor(agent.status)}`} />
-                  <span className="capitalize">{agent.status}</span>
-                </div>
+
+        <ScrollArea className="max-h-[calc(90vh-200px)]">
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview" className="flex items-center space-x-2">
+                <Eye className="w-4 h-4" />
+                <span>Visão Geral</span>
+              </TabsTrigger>
+              <TabsTrigger value="config" className="flex items-center space-x-2">
+                <Settings className="w-4 h-4" />
+                <span>Configuração</span>
+              </TabsTrigger>
+              <TabsTrigger value="stats" className="flex items-center space-x-2">
+                <BarChart3 className="w-4 h-4" />
+                <span>Estatísticas</span>
+              </TabsTrigger>
+              <TabsTrigger value="activity" className="flex items-center space-x-2">
+                <Clock className="w-4 h-4" />
+                <span>Atividade</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Informações Básicas</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Descrição</label>
+                      <p className="mt-1 text-sm">{agent.description || 'Sem descrição'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Workspace</label>
+                      <p className="mt-1 text-sm">{agent.workspace?.name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Slug</label>
+                      <p className="mt-1 text-sm font-mono">{agent.slug}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Criado em</label>
+                      <p className="mt-1 text-sm">
+                        {new Date(agent.createdAt).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Ações Rápidas</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Button 
+                      onClick={handleExecute}
+                      disabled={isExecuting || agent.status !== 'active'}
+                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+                    >
+                      {isExecuting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                          Executando...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4 mr-2" />
+                          Executar Agente
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => onEdit?.(agent)}
+                      className="w-full"
+                    >
+                      <Settings className="w-4 h-4 mr-2" />
+                      Editar Agente
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleExport}
+                      className="w-full sm:hidden"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Exportar Configuração
+                    </Button>
+                  </CardContent>
+                </Card>
               </div>
-              <div>
-                <h4 className="font-medium text-sm text-muted-foreground mb-1">Tipo</h4>
-                <Badge className={getTypeColor(agent.type)}>
-                  {agent.type}
-                </Badge>
-              </div>
-              <div>
-                <h4 className="font-medium text-sm text-muted-foreground mb-1">Workspace</h4>
-                <p>{agent.workspace?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <h4 className="font-medium text-sm text-muted-foreground mb-1">Criado em</h4>
-                <p>{new Date(agent.createdAt).toLocaleDateString()}</p>
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="config" className="space-y-4">
-            <div>
-              <h4 className="font-medium mb-2">Configuração YAML</h4>
-              <ScrollArea className="h-64 w-full border rounded-md p-4 bg-muted/50">
-                <pre className="text-sm whitespace-pre-wrap">
-                  {formatConfig(agent.config)}
-                </pre>
-              </ScrollArea>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="knowledge" className="space-y-4">
-            <div>
-              <h4 className="font-medium mb-2">Base de Conhecimento</h4>
-              <ScrollArea className="h-64 w-full border rounded-md p-4 bg-muted/50">
-                {agent.knowledge ? (
-                  <div className="prose prose-sm max-w-none">
-                    <pre className="text-sm whitespace-pre-wrap">
-                      {agent.knowledge}
+
+              {agent.knowledge && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center space-x-2">
+                      <Brain className="w-5 h-5" />
+                      <span>Base de Conhecimento</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-muted/50 p-4 rounded-lg">
+                      <pre className="whitespace-pre-wrap text-sm">{agent.knowledge}</pre>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="config" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center space-x-2">
+                    <Settings className="w-5 h-5" />
+                    <span>Configuração do Agente</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Configuração detalhada do agente em formato JSON
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-muted/50 p-4 rounded-lg max-h-96 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap text-sm font-mono">
+                      {JSON.stringify(agent, null, 2)}
                     </pre>
                   </div>
-                ) : (
-                  <p className="text-muted-foreground italic">
-                    Nenhuma base de conhecimento definida para este agente.
-                  </p>
-                )}
-              </ScrollArea>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="actions" className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              <AgentExecutionDialog agent={agent}>
-                <Button className="w-full justify-start" size="lg">
-                  <Play className="w-4 h-4 mr-2" />
-                  Executar Agente
-                </Button>
-              </AgentExecutionDialog>
-              
-              <EditAgentDialog agent={agent} onAgentUpdated={() => setIsOpen(false)}>
-                <Button variant="outline" className="w-full justify-start" size="lg">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Editar Configuração
-                </Button>
-              </EditAgentDialog>
-              
-              <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start" size="lg" onClick={loadExecutionHistory}>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Ver Histórico de Execuções
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Histórico de Execuções</DialogTitle>
-                    <DialogDescription>
-                      Histórico de execuções do agente {agent.name}
-                    </DialogDescription>
-                  </DialogHeader>
+                </CardContent>
+              </Card>
+
+              {agent.customInstructions && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Instruções Personalizadas</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="bg-muted/50 p-4 rounded-lg">
+                      <pre className="whitespace-pre-wrap text-sm">{agent.customInstructions}</pre>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value="stats" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                        <BarChart3 className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">24</p>
+                        <p className="text-sm text-muted-foreground">Total Execuções</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                        <CheckCircle className="w-6 h-6 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">96%</p>
+                        <p className="text-sm text-muted-foreground">Taxa de Sucesso</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                        <Zap className="w-6 h-6 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">1.2s</p>
+                        <p className="text-sm text-muted-foreground">Tempo Médio</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Performance Detalhada</CardTitle>
+                </CardHeader>
+                <CardContent>
                   <div className="space-y-4">
-                    {loadingHistory ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-                        <span>Carregando histórico...</span>
-                      </div>
-                    ) : executionHistory.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p>Nenhuma execução encontrada para este agente.</p>
-                      </div>
-                    ) : (
-                      <ScrollArea className="h-64 w-full border rounded-md">
-                        <div className="p-4 space-y-3">
-                          {executionHistory.map((execution, index) => (
-                            <div key={index} className="border rounded-lg p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium">
-                                  Execução #{index + 1}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {new Date(execution.timestamp).toLocaleString()}
-                                </span>
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                <p><strong>Status:</strong> {execution.status}</p>
-                                <p><strong>Input:</strong> {execution.input?.substring(0, 100)}...</p>
-                                {execution.output && (
-                                  <p><strong>Output:</strong> {execution.output?.substring(0, 100)}...</p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Precisão</span>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-24 bg-muted rounded-full h-2">
+                          <div className="bg-blue-600 h-2 rounded-full" style={{ width: '94%' }} />
                         </div>
-                      </ScrollArea>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-              
-              <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start" size="lg" onClick={handleExportOpen}>
-                    <Code className="w-4 h-4 mr-2" />
-                    Exportar Configuração
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Exportar Configuração</DialogTitle>
-                    <DialogDescription>
-                      Exporte a configuração do agente {agent.name} em diferentes formatos
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="export-format">Formato de Exportação</Label>
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        <Button
-                          type="button"
-                          variant={exportFormat === 'json' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setExportFormat('json')}
-                        >
-                          JSON
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={exportFormat === 'yaml' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setExportFormat('yaml')}
-                        >
-                          YAML
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={exportFormat === 'markdown' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setExportFormat('markdown')}
-                        >
-                          Markdown
-                        </Button>
+                        <span className="text-sm font-medium">94%</span>
                       </div>
                     </div>
-                    
-                    <div>
-                      <Label htmlFor="export-content">Conteúdo Exportado</Label>
-                      <ScrollArea className="h-64 w-full border rounded-md mt-2">
-                        <pre className="p-4 text-sm whitespace-pre-wrap">
-                          {exportContent}
-                        </pre>
-                      </ScrollArea>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Velocidade</span>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-24 bg-muted rounded-full h-2">
+                          <div className="bg-green-600 h-2 rounded-full" style={{ width: '88%' }} />
+                        </div>
+                        <span className="text-sm font-medium">88%</span>
+                      </div>
                     </div>
-                    
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => setIsExportOpen(false)}>
-                        Cancelar
-                      </Button>
-                      <Button onClick={downloadExport} disabled={!exportContent}>
-                        <Download className="w-4 h-4 mr-2" />
-                        Baixar
-                      </Button>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Satisfação</span>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-24 bg-muted rounded-full h-2">
+                          <div className="bg-purple-600 h-2 rounded-full" style={{ width: '96%' }} />
+                        </div>
+                        <span className="text-sm font-medium">96%</span>
+                      </div>
                     </div>
                   </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </TabsContent>
-        </Tabs>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="activity" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center space-x-2">
+                    <Clock className="w-5 h-5" />
+                    <span>Atividade Recente</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-4 p-3 border rounded-lg">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Execução bem-sucedida</p>
+                        <p className="text-xs text-muted-foreground">Análise de documento - há 2 minutos</p>
+                      </div>
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    </div>
+                    <div className="flex items-center space-x-4 p-3 border rounded-lg">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Configuração atualizada</p>
+                        <p className="text-xs text-muted-foreground">Novas instruções adicionadas - há 1 hora</p>
+                      </div>
+                      <Settings className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <div className="flex items-center space-x-4 p-3 border rounded-lg">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Treinamento concluído</p>
+                        <p className="text-xs text-muted-foreground">Modelo otimizado com novos dados - há 3 horas</p>
+                      </div>
+                      <Brain className="w-4 h-4 text-purple-500" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

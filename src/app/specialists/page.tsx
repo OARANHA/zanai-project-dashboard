@@ -16,6 +16,7 @@ import CreateAgentDialog from '@/components/agents/CreateAgentDialog';
 import AgentDetailsDialog from '@/components/agents/AgentDetailsDialog';
 import AgentExecutionDialog from '@/components/agents/AgentExecutionDialog';
 import EditAgentDialog from '@/components/agents/EditAgentDialog';
+import QuickAgentInput from '@/components/agents/QuickAgentInput';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
@@ -263,6 +264,83 @@ export default function SpecialistsPage() {
       console.error('Erro ao gerar estrutura:', error);
       alert('Erro ao gerar estrutura de pastas');
     }
+  };
+
+  const executeAgentWithInput = async (agentId: string, input: string) => {
+    try {
+      const response = await fetch('/api/execute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agentId,
+          input,
+          context: {
+            timestamp: new Date().toISOString(),
+            source: 'quick-input'
+          }
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Agente executado com sucesso:', result);
+        // Aqui você pode adicionar uma notificação de sucesso
+      } else {
+        const error = await response.json();
+        console.error('Erro ao executar agente:', error);
+      }
+    } catch (error) {
+      console.error('Erro ao executar agente:', error);
+    }
+  };
+
+  const getAgentExamples = (agent: Agent): string[] => {
+    const examplesByType: Record<string, string[]> = {
+      'template': [
+        'Analise este relatório e destaque os principais pontos',
+        'Crie um resumo executivo dos dados fornecidos',
+        'Gere um plano de ação baseado nas informações'
+      ],
+      'custom': [
+        'Execute sua tarefa principal com os dados atuais',
+        'Processe esta solicitação conforme suas configurações',
+        'Aplique seu conhecimento especializado neste caso'
+      ],
+      'composed': [
+        'Coordene a execução das tarefas em sequência',
+        'Integre os resultados dos diferentes agentes',
+        'Otimize o fluxo de trabalho completo'
+      ]
+    };
+
+    // Exemplos específicos baseados no nome do agente
+    if (agent.name.toLowerCase().includes('business') || agent.name.toLowerCase().includes('analyst')) {
+      return [
+        'Analise o mercado e identifique oportunidades',
+        'Crie um plano de negócios para um novo projeto',
+        'Avalie a viabilidade financeira deste investimento'
+      ];
+    }
+
+    if (agent.name.toLowerCase().includes('technical') || agent.name.toLowerCase().includes('developer')) {
+      return [
+        'Revise este código e sugira melhorias',
+        'Crie uma solução técnica para este problema',
+        'Otimize a performance desta aplicação'
+      ];
+    }
+
+    if (agent.name.toLowerCase().includes('content') || agent.name.toLowerCase().includes('writer')) {
+      return [
+        'Crie um conteúdo engajador sobre este tema',
+        'Escreva um artigo sobre as últimas tendências',
+        'Desenvolva uma estratégia de conteúdo para redes sociais'
+      ];
+    }
+
+    return examplesByType[agent.type] || examplesByType.template;
   };
 
   const filteredTemplates = selectedCategory !== 'all' 
@@ -593,6 +671,14 @@ export default function SpecialistsPage() {
                     <div className="text-sm text-muted-foreground">
                       <span className="font-medium">Workspace:</span> {agent.workspace?.name || 'N/A'}
                     </div>
+                    
+                    {/* Quick Agent Input */}
+                    <QuickAgentInput 
+                      agent={agent}
+                      onExecute={(input) => executeAgentWithInput(agent.id, input)}
+                      examples={getAgentExamples(agent)}
+                    />
+                    
                     <div className="flex space-x-2">
                       <AgentExecutionDialog agent={agent}>
                         <Button size="sm" className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700">

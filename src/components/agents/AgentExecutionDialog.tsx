@@ -22,6 +22,7 @@ interface Agent {
 interface AgentExecutionDialogProps {
   agent: Agent;
   children: React.ReactNode;
+  initialInput?: string;
 }
 
 interface Execution {
@@ -35,7 +36,7 @@ interface Execution {
   result?: string;
 }
 
-export default function AgentExecutionDialog({ agent, children }: AgentExecutionDialogProps) {
+export default function AgentExecutionDialog({ agent, children, initialInput }: AgentExecutionDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [input, setInput] = useState('');
@@ -159,8 +160,11 @@ export default function AgentExecutionDialog({ agent, children }: AgentExecution
   useEffect(() => {
     if (isOpen) {
       loadExecutionHistory();
+      if (initialInput) {
+        setInput(initialInput);
+      }
     }
-  }, [isOpen, agent.id]);
+  }, [isOpen, agent.id, initialInput]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

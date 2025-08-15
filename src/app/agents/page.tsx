@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { 
   Brain, 
   Plus, 
@@ -33,6 +35,7 @@ import {
 import EditAgentDialog from '@/components/agents/EditAgentDialog';
 import AgentDetailsDialog from '@/components/agents/AgentDetailsDialog';
 import AgentActionsMenu from '@/components/agents/AgentActionsMenu';
+import ExportFormatDialog from '@/components/agents/ExportFormatDialog';
 import MainLayout from '@/components/layout/MainLayout';
 import ElegantCard from '@/components/ui/ElegantCard';
 import { useToast } from '@/hooks/use-toast';
@@ -69,6 +72,7 @@ export default function AgentsPage() {
   const [isCreateAgentOpen, setIsCreateAgentOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -263,37 +267,59 @@ export default function AgentsPage() {
     }
   };
 
-  const exportAgent = async (agent: Agent) => {
+  const exportAgent = async (agent: Agent, format: 'json' | 'markdown' = 'json') => {
     try {
-      const exportData = {
-        name: agent.name,
-        description: agent.description,
-        type: agent.type,
-        config: agent.config,
-        knowledge: agent.knowledge,
-        customInstructions: agent.customInstructions,
-        roleDefinition: agent.roleDefinition,
-        groups: agent.groups,
-        exportedAt: new Date().toISOString(),
-        version: '1.0'
-      };
+      const timestamp = new Date().toISOString().split('T')[0];
+      const safeName = agent.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      
+      if (format === 'json') {
+        const exportData = {
+          name: agent.name,
+          description: agent.description,
+          type: agent.type,
+          config: agent.config,
+          knowledge: agent.knowledge,
+          customInstructions: agent.customInstructions,
+          roleDefinition: agent.roleDefinition,
+          groups: agent.groups,
+          exportedAt: new Date().toISOString(),
+          version: '1.0'
+        };
 
-      const dataStr = JSON.stringify(exportData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${agent.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_export.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${safeName}_export_${timestamp}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
-      toast({
-        title: "Agente exportado com sucesso!",
-        description: `O agente "${agent.name}" foi exportado como arquivo JSON.`,
-        variant: "default",
-      });
+        toast({
+          title: "Agente exportado com sucesso!",
+          description: `O agente "${agent.name}" foi exportado como arquivo JSON.`,
+          variant: "default",
+        });
+      } else if (format === 'markdown') {
+        const markdownContent = generateMarkdownExport(agent);
+        const dataBlob = new Blob([markdownContent], { type: 'text/markdown' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${safeName}_export_${timestamp}.md`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: "Agente exportado com sucesso!",
+          description: `O agente "${agent.name}" foi exportado como arquivo Markdown.`,
+          variant: "default",
+        });
+      }
     } catch (error) {
       toast({
         title: "Erro ao exportar agente",
@@ -302,6 +328,76 @@ export default function AgentsPage() {
       });
       console.error('Erro ao exportar agente:', error);
     }
+  };
+
+  const generateMarkdownExport = (agent: Agent): string => {
+    const timestamp = new Date().toLocaleString('pt-BR');
+    
+    return `# ${agent.name}
+
+> **Tipo:** ${agent.type === 'template' ? 'Template' : agent.type === 'custom' ? 'Personalizado' : 'Composto'}  
+> **Exportado em:** ${timestamp}  
+> **Versão:** 1.0
+
+## Descrição
+
+${agent.description || 'Nenhuma descrição fornecida.'}
+
+---
+
+## Definição de Papel
+
+${agent.roleDefinition || `Você é um agente especialista chamado ${agent.name}.`}
+
+---
+
+## Instruções Personalizadas
+
+${agent.customInstructions || 'Nenhuma instrução personalizada fornecida.'}
+
+---
+
+## Configuração
+
+\`\`\`json
+${agent.config || '{}'}
+\`\`\`
+
+---
+
+## Conhecimento Base
+
+${agent.knowledge ? `
+
+\`\`\`markdown
+${agent.knowledge}
+\`\`\`
+` : 'Nenhum conhecimento base fornecido.'}
+
+---
+
+## Grupos e Permissões
+
+${agent.groups && agent.groups.length > 0 ? `
+\`\`\`json
+${JSON.stringify(agent.groups, null, 2)}
+\`\`\`
+` : 'Nenhum grupo ou permissão definido.'}
+
+---
+
+## Metadados
+
+- **ID:** ${agent.id}
+- **Slug:** ${agent.slug || 'N/A'}
+- **Tipo:** ${agent.type}
+- **Workspace ID:** ${agent.workspaceId}
+- **Data de Exportação:** ${new Date().toISOString()}
+
+---
+
+*Este arquivo foi gerado automaticamente pelo sistema Zanai Project.*
+`;
   };
 
   const shareAgent = async (agent: Agent) => {
@@ -379,7 +475,14 @@ export default function AgentsPage() {
   };
 
   const handleExport = (agent: Agent) => {
-    exportAgent(agent);
+    setSelectedAgent(agent);
+    setIsExportDialogOpen(true);
+  };
+
+  const handleExportWithFormat = async (format: 'json' | 'markdown') => {
+    if (selectedAgent) {
+      await exportAgent(selectedAgent, format);
+    }
   };
 
   const handleShare = (agent: Agent) => {
@@ -799,6 +902,13 @@ export default function AgentsPage() {
               }
             }}
             onAgentUpdated={loadAgents}
+          />
+          
+          <ExportFormatDialog
+            agent={selectedAgent}
+            isOpen={isExportDialogOpen}
+            onClose={() => setIsExportDialogOpen(false)}
+            onExport={handleExportWithFormat}
           />
         </>
       )}

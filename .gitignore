@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> c11bcd071ebbbf01b0ceea55ab2849eb2f3c96dd
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
@@ -43,18 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-local-*
-.claude
-.z-ai-config
-dev.log
-test
-prompt
 
-<<<<<<< HEAD
-server.log
-=======
-server.log
-=======
 # Environment variables
 .env
 .env.local
@@ -80,6 +65,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+dev.log
+server.log
 
 # Runtime data
 pids
@@ -160,8 +147,8 @@ ehthumbs.db
 Thumbs.db
 
 # Zanai specific
-dev.log
-server.log
 zanai.db
->>>>>>> fb6b28be56851d3feb477f5a654cc4a241906917
->>>>>>> c11bcd071ebbbf01b0ceea55ab2849eb2f3c96dd
+local-*
+.claude
+test
+prompt

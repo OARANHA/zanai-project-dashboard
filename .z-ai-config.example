@@ -1,0 +1,154 @@
+; =============================================================================
+; ZANAI PROJECT - ARQUIVO DE CONFIGURAÇÃO Z.AI EXAMPLE
+; =============================================================================
+; 
+; INSTRUÇÕES:
+; 1. Copie este arquivo para .z-ai-config
+; 2. Preencha os valores reais das variáveis
+; 3. NUNCA commit o arquivo .z-ai-config para o repositório
+; 4. Adicione .z-ai-config ao .gitignore
+;
+; FORMATO:
+; - Arquivo INI padrão com seções
+; - Comentários começam com ; ou #
+; - Valores entre aspas para strings com espaços
+; =============================================================================
+
+[default]
+; =============================================================================
+; CONFIGURAÇÃO PRINCIPAL (MAIN CONFIGURATION)
+; =============================================================================
+; Chave de API do Z.ai (OBRIGATÓRIO)
+; Obtida em: https://console.z.ai/
+; Formato: string alfanumérica
+api_key = "sua_chave_api_zai_aqui"
+
+; URL base da API Z.ai
+; Padrão: https://api.z.ai/api/paas/v4/
+; Não altere a menos que instruído pela equipe Z.ai
+base_url = "https://api.z.ai/api/paas/v4/"
+
+; Modelo de IA a ser usado
+; Opções disponíveis: glm-4.5-flash, gpt-4, gpt-3.5-turbo, etc.
+model = "glm-4.5-flash"
+
+; Número máximo de tokens na resposta
+; Recomendado: 1000-4000 (depende do modelo)
+max_tokens = 2000
+
+; Temperatura de criatividade (0.0 a 1.0)
+; 0.0 = mais preciso e conservador
+; 1.0 = mais criativo e diverso
+temperature = 0.7
+
+; =============================================================================
+; CONFIGURAÇÕES AVANÇADAS (ADVANCED CONFIGURATION)
+; =============================================================================
+; Timeout para requisições (em segundos)
+timeout = 30
+
+; Número máximo de retries para requisições falhas
+max_retries = 3
+
+; Delay entre retries (em milissegundos)
+retry_delay = 1000
+
+; Habilitar modo debug
+debug = false
+
+; Formato de resposta (json, text)
+response_format = "json"
+
+; =============================================================================
+; CONFIGURAÇÕES DE PROXY (PROXY CONFIGURATION)
+; =============================================================================
+; Descomente e configure se precisar de proxy
+; proxy_url = "http://proxy.company.com:8080"
+; proxy_username = "username"
+; proxy_password = "password"
+
+; =============================================================================
+; CONFIGURAÇÕES DE SEGURANÇA (SECURITY CONFIGURATION)
+; =============================================================================
+; Habilitar verificação SSL (recomendado: true)
+verify_ssl = true
+
+; Custom CA certificate path (se necessário)
+; ca_path = "/path/to/custom/ca.crt"
+
+; =============================================================================
+; PERFIS DE CONFIGURAÇÃO (CONFIGURATION PROFILES)
+; =============================================================================
+
+[development]
+; Configurações para ambiente de desenvolvimento
+api_key = "dev_key_local"
+base_url = "https://api.z.ai/api/paas/v4/"
+model = "glm-4.5-flash"
+max_tokens = 2000
+temperature = 0.7
+debug = true
+timeout = 60
+
+[production]
+; Configurações para ambiente de produção
+api_key = "prod_key_real"
+base_url = "https://api.z.ai/api/paas/v4/"
+model = "glm-4.5-flash"
+max_tokens = 4000
+temperature = 0.5
+debug = false
+timeout = 30
+verify_ssl = true
+
+[test]
+; Configurações para ambiente de testes
+api_key = "test_key"
+base_url = "https://api.z.ai/api/paas/v4/"
+model = "glm-4.5-flash"
+max_tokens = 1000
+temperature = 0.3
+debug = true
+timeout = 15
+
+[staging]
+; Configurações para ambiente de staging
+api_key = "staging_key"
+base_url = "https://api.z.ai/api/paas/v4/"
+model = "glm-4.5-flash"
+max_tokens = 3000
+temperature = 0.6
+debug = false
+timeout = 30
+
+; =============================================================================
+; EXEMPLOS DE MODELOS DISPONÍVEIS (AVAILABLE MODELS EXAMPLES)
+; =============================================================================
+
+; [glm-4.5-flash-config]
+; model = "glm-4.5-flash"
+; max_tokens = 2000
+; temperature = 0.7
+; description = "Modelo rápido e eficiente para uso geral"
+
+; [glm-4-config]
+; model = "glm-4"
+; max_tokens = 4000
+; temperature = 0.7
+; description = "Modelo padrão com bom equilíbrio"
+
+; [glm-4-air-config]
+; model = "glm-4-air"
+; max_tokens = 8000
+; temperature = 0.7
+; description = "Modelo com contexto mais longo"
+
+; [gpt-4-config]
+; model = "gpt-4"
+; max_tokens = 4000
+; temperature = 0.7
+; description = "Modelo GPT-4 da OpenAI (se disponível)"
+
+; =============================================================================
+; FIM DO ARQUIVO DE EXEMPLO
+; =============================================================================

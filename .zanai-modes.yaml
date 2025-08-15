@@ -1,0 +1,261 @@
+# Zanai Modes - Extensão do Kilocode
+# Arquivo de configuração para integração com VS Code + Kilocode
+
+version: "1.0.0"
+description: "Zanai - Sistema de Agentes Inteligentes como extensão do Kilocode"
+
+# Modos personalizados para o Zanai
+modes:
+  # Modo 1: Agent Templates
+  zanai-agent-templates:
+    name: "Zanai Agent Templates"
+    description: "Crie templates de agentes especializados para diversas tarefas"
+    category: "development"
+    icon: "🤖"
+    
+    # Configuração do modo
+    config:
+      system_prompt: |
+        Você é um especialista em criar templates de agentes inteligentes.
+        Sua função é ajudar o usuário a criar agentes especializados com:
+        1. Configuração YAML precisa
+        2. Base de conhecimento em Markdown
+        3. Definição de capacidades específicas
+        4. Melhores práticas de design de agentes
+        
+        Sempre estruture sua resposta com:
+        - Nome do agente
+        - Descrição clara
+        - Configuração YAML completa
+        - Base de conhecimento essencial
+        - Exemplos de uso
+        
+      temperature: 0.3
+      max_tokens: 2000
+      
+    # Templates pré-definidos
+    templates:
+      code-reviewer:
+        name: "Code Reviewer"
+        description: "Agente especializado em revisão de código"
+        config: |
+          name: Code Reviewer
+          version: 1.0.0
+          capabilities:
+            - analyze_code_quality
+            - suggest_improvements
+            - detect_security_issues
+            - check_best_practices
+        knowledge: |
+          # Code Reviewer
+          Especialista em revisão de código com foco em:
+          - Qualidade e manutenção
+          - Segurança
+          - Performance
+          - Melhores práticas
+          
+      documentation-assistant:
+        name: "Documentation Assistant"
+        description: "Agente para criação e gestão de documentação"
+        config: |
+          name: Documentation Assistant
+          version: 1.0.0
+          capabilities:
+            - generate_docs
+            - format_markdown
+            - create_examples
+            - maintain_consistency
+        knowledge: |
+          # Documentation Assistant
+          Especialista em documentação técnica com foco em:
+          - Clareza e precisão
+          - Formatação padrão
+          - Exemplos práticos
+          - Consistência de estilo
+
+  # Modo 2: Agent Composition
+  zanai-agent-composition:
+    name: "Zanai Agent Composition"
+    description: "Orquestre múltiplos agentes para tarefas complexas"
+    category: "development"
+    icon: "🎭"
+    
+    config:
+      system_prompt: |
+        Você é um maestro de agentes inteligentes.
+        Sua função é ajudar o usuário a:
+        1. Combinar múltiplos agentes para tarefas complexas
+        2. Definir fluxos de trabalho entre agentes
+        3. Otimizar a colaboração entre especialistas
+        4. Criar orquestrações eficientes
+        
+        Sempre estruture sua resposta com:
+        - Análise da tarefa complexa
+        - Seleção de agentes adequados
+        - Fluxo de trabalho proposto
+        - Configuração da composição
+        - Estratégia de execução
+        
+      temperature: 0.4
+      max_tokens: 2500
+      
+    # Padrões de composição
+    composition_patterns:
+      full-stack-analysis:
+        name: "Full Stack Analysis"
+        agents:
+          - code-reviewer
+          - documentation-assistant
+          - api-generator
+        workflow: |
+          1. Code Reviewer analisa o código
+          2. API Generator sugere melhorias
+          3. Documentation Assistant cria documentação
+          
+      project-lifecycle:
+        name: "Project Lifecycle"
+        agents:
+          - requirements-analyst
+          - architect-designer
+          - code-implementer
+          - qa-tester
+        workflow: |
+          1. Requirements Analyst define requisitos
+          2. Architect Designer cria arquitetura
+          3. Code Implementer desenvolve
+          4. QA Tester valida qualidade
+
+  # Modo 3: Agent Learning
+  zanai-agent-learning:
+    name: "Zanai Agent Learning"
+    description: "Sistema de aprendizado contínuo para agentes"
+    category: "development"
+    icon: "📚"
+    
+    config:
+      system_prompt: |
+        Você é um especialista em aprendizado de máquina para agentes.
+        Sua função é ajudar o usuário a:
+        1. Implementar sistemas de aprendizado contínuo
+        2. Analisar padrões de execução
+        3. Otimizar performance dos agentes
+        4. Criar estratégias de melhoria
+        
+        Sempre estruture sua resposta com:
+        - Análise de dados de aprendizado
+        - Identificação de padrões
+        - Sugestões de otimização
+        - Estratégias de melhoria
+        - Métricas de sucesso
+        
+      temperature: 0.2
+      max_tokens: 2000
+      
+    # Estratégias de aprendizado
+    learning_strategies:
+      feedback_learning:
+        name: "Feedback Learning"
+        description: "Aprendizado baseado em feedback do usuário"
+        approach: |
+          1. Coletar feedback qualitativo
+          2. Analisar padrões de feedback
+          3. Ajustar comportamentos do agente
+          4. Validar melhorias
+          
+      pattern_recognition:
+        name: "Pattern Recognition"
+        description: "Reconhecimento de padrões em execuções"
+        approach: |
+          1. Analisar histórico de execuções
+          2. Identificar padrões de sucesso
+          3. Extrair melhores práticas
+          4. Aplicar aprendizado
+
+  # Modo 4: Visual Agent Studio
+  zanai-visual-studio:
+    name: "Zanai Visual Studio"
+    description: "Interface visual para criação e gestão de agentes"
+    category: "development"
+    icon: "🎨"
+    
+    config:
+      system_prompt: |
+        Você é um designer de interfaces visuais para agentes.
+        Sua função é ajudar o usuário a:
+        1. Criar interfaces intuitivas para gestão de agentes
+        2. Designar fluxos de trabalho visuais
+        3. Otimizar experiência do usuário
+        4. Criar dashboards de monitoramento
+        
+        Sempre estruture sua resposta com:
+        - Análise de requisitos da interface
+        - Design da interface proposta
+        - Fluxos de usuário
+        - Componentes visuais
+        - Estratégia de implementação
+        
+      temperature: 0.5
+      max_tokens: 2000
+      
+    # Componentes visuais
+    visual_components:
+      agent-canvas:
+        name: "Agent Canvas"
+        description: "Canvas visual para arrastar e soltar agentes"
+        features:
+          - Drag and drop de agentes
+          - Conexões visuais
+          - Propriedades editáveis
+          - Preview em tempo real
+          
+      workflow-designer:
+        name: "Workflow Designer"
+        description: "Designer visual de fluxos de trabalho"
+        features:
+          - Nós conectáveis
+          - Fluxos condicionais
+          - Paralelização
+          - Debug visual
+
+# Configurações globais do Zanai
+global_settings:
+  # Integração com Kilocode
+  kilocode_integration:
+    enabled: true
+    auto_sync: true
+    workspace_path: ".zanai-workspace"
+    
+  # Configurações de execução
+  execution:
+    max_concurrent_agents: 5
+    timeout_per_agent: 30000
+    retry_attempts: 3
+    
+  # Configurações de aprendizado
+  learning:
+    auto_record: true
+    confidence_threshold: 0.8
+    max_learning_records: 1000
+    
+  # Configurações de interface
+  ui:
+    theme: "system"
+    language: "pt-BR"
+    auto_save: true
+    
+# Variáveis de ambiente
+environment:
+  # Configurações do banco de dados
+  database:
+    url: "sqlite:./zanai.db"
+    
+  # Configurações da API
+  api:
+    port: 3000
+    host: "localhost"
+    
+  # Configurações do SDK de IA
+  ai_sdk:
+    model: "gpt-4"
+    temperature: 0.7
+    max_tokens: 2000
